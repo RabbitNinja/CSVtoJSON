@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <RootNamespace>CSVtoJSON_Console_App</RootNamespace>
+    <Platforms>AnyCPU;x64</Platforms>
+    <AssemblyName>CSVtoJSON</AssemblyName>
+  </PropertyGroup>
+
+</Project>
