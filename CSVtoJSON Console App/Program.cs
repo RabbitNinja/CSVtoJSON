@@ -101,12 +101,13 @@ namespace CSVtoJSON_Console_App
 
                         do
                         {
+                            string cellVal = "";
                             endType = c[0].GetAction(isEndOfFile, sb.ToString(), startsWithDoubleQuote, endsWithDoubleQuote, doubleQuoteNotAtStart, doubleQuoteCount);
                             switch (endType)
                             {
                                 case endOf.cell:
-                                    // sb.Remove(sb.Length - 1, 1) to remove comma
-                                    ProcessCellValue(colIndex, rowIndex, js.keys, js.jsonObj, includeHeaderRow, sb.Remove(sb.Length - 1, 1).ToString());
+                                    cellVal = formatStringValue(endOf.cell, sb);
+                                    ProcessCellValue(colIndex, rowIndex, js.keys, js.jsonObj, includeHeaderRow, cellVal);
                                     colIndex++;
                                     pos = 0;
                                     sb.Clear();
@@ -116,18 +117,8 @@ namespace CSVtoJSON_Console_App
                                     doubleQuoteCount = 0;
                                     break;
                                 case endOf.cell_startEndQuotes:
-                                    // remove leading double quote and ending double quote and comma
-                                    sb.Remove(sb.Length - 1, 1); // remove comma
-                                    if (sb[sb.Length - 1] == doubleQuotes) // remove " " ,
-                                    {
-                                        sb.Remove(0, 1); // remove leading double quote
-                                        sb.Remove(sb.Length - 2, 2); // remove trialing double quote with its escape character '\'
-                                    }
-                                    else
-                                    {
-                                        sb.Insert(0, '\\');
-                                    }  
-                                    ProcessCellValue(colIndex, rowIndex, js.keys, js.jsonObj, includeHeaderRow, sb.ToString());
+                                    cellVal = formatStringValue(endOf.cell_startEndQuotes, sb);
+                                    ProcessCellValue(colIndex, rowIndex, js.keys, js.jsonObj, includeHeaderRow, cellVal);
                                     colIndex++;
                                     pos = 0;
                                     sb.Clear();
@@ -137,11 +128,14 @@ namespace CSVtoJSON_Console_App
                                     doubleQuoteCount = 0;
                                     break;
                                 case endOf.row:
-                                    ProcessCellValue(colIndex, rowIndex, js.keys, js.jsonObj, includeHeaderRow, sb.ToString());
+                                    cellVal = formatStringValue(endOf.row, sb);
+                                    ProcessCellValue(colIndex, rowIndex, js.keys, js.jsonObj, includeHeaderRow, cellVal);
                                     // In some cases, at the end of a row, it contains both line feed and carriage return.
                                     // peek next charact and see if it's \r or \n, advance by another character
-                                    if (reader.Peek() == lineFeed || reader.Peek() == carriageReturn)
+                                    while (reader.Peek() > 0 && (reader.Peek() == lineFeed || reader.Peek() == carriageReturn))
+                                    {
                                         reader.Read(c, 0, 1); // advance by 1 character
+                                    }
                                     colIndex = 0;
                                     pos = 0;
                                     sb.Clear();
@@ -152,22 +146,15 @@ namespace CSVtoJSON_Console_App
                                     rowIndex++;
                                     break;
                                 case endOf.row_startEndQuotes:
-                                    // remove leading double quote and ending double quote and linefeed
-                                    sb.Remove(sb.Length - 1, 1); // remove lineFeed or carriageReturn
-                                    if (sb[sb.Length - 1] == doubleQuotes) // remove " " \r or \n
-                                    {
-                                        sb.Remove(0, 1); // remove leading double quote
-                                        sb.Remove(sb.Length - 2, 2); // remove trialing double quote with its escape character '\'
-                                    }
-                                    else
-                                    {
-                                        sb.Insert(0, '\\');
-                                    }
-                                    ProcessCellValue(colIndex, rowIndex, js.keys, js.jsonObj, includeHeaderRow, sb.ToString());
+                                    cellVal = formatStringValue(endOf.row_startEndQuotes, sb);
+                                    ProcessCellValue(colIndex, rowIndex, js.keys, js.jsonObj, includeHeaderRow, cellVal);
                                     // In some cases, at the end of a row, it contains both line feed and carriage return.
                                     // peek next charact and see if it's \r or \n, advance by another character
-                                    if (reader.Peek() == lineFeed || reader.Peek() == carriageReturn)
+                                    while (reader.Peek() > 0 && (reader.Peek() == lineFeed || reader.Peek() == carriageReturn))
+                                    {
                                         reader.Read(c, 0, 1); // advance by 1 character
+                                    }
+                                        
                                     colIndex = 0;
                                     pos = 0;
                                     sb.Clear();
@@ -178,22 +165,17 @@ namespace CSVtoJSON_Console_App
                                     rowIndex++;
                                     break;
                                 case endOf.file:
-                                    ProcessCellValue(colIndex, rowIndex, js.keys, js.jsonObj, includeHeaderRow, sb.ToString());
-                                    sb.Clear();
-                                    endType = endOf.file;
+                                    if (sb.Length > 0)
+                                    {
+                                        cellVal = formatStringValue(endOf.file, sb);
+                                        ProcessCellValue(colIndex, rowIndex, js.keys, js.jsonObj, includeHeaderRow, cellVal);
+                                        sb.Clear();
+                                        endType = endOf.file;
+                                    }
                                     break;
                                 case endOf.file_startEndQuotes:
-                                    // remove leading double quote and ending double quote
-                                    if (sb[sb.Length - 1] == doubleQuotes) // remove " " \r or \n
-                                    {
-                                        sb.Remove(0, 1); // remove leading double quote
-                                        sb.Remove(sb.Length - 2, 2); // remove trialing double quote with its escape character '\'
-                                    }
-                                    else
-                                    {
-                                        sb.Insert(0, '\\');
-                                    }
-                                    ProcessCellValue(colIndex, rowIndex, js.keys, js.jsonObj, includeHeaderRow, sb.ToString());
+                                    cellVal = formatStringValue(endOf.file_startEndQuotes, sb);
+                                    ProcessCellValue(colIndex, rowIndex, js.keys, js.jsonObj, includeHeaderRow, cellVal);
                                     sb.Clear();
                                     endType = endOf.file;
                                     break;
@@ -402,6 +384,61 @@ namespace CSVtoJSON_Console_App
             }
         }
 
+        private static string formatStringValue(endOf endType, StringBuilder sb)
+        {
+            switch(endType)
+            {
+                case endOf.cell:
+                    return sb.Remove(sb.Length - 1, 1).ToString();
+                case endOf.cell_startEndQuotes:
+                    // remove leading double quote and ending double quote and comma
+                    sb.Remove(sb.Length - 1, 1); // remove comma
+                    if (sb[sb.Length - 1] == doubleQuotes) // remove " " ,
+                    {
+                        sb.Remove(0, 1); // remove leading double quote
+                        sb.Remove(sb.Length - 2, 2); // remove trialing double quote with its escape character '\'
+                    }
+                    else
+                    {
+                        sb.Insert(0, '\\');
+                    }
+                    return sb.ToString();
+                case endOf.row:
+                case endOf.file:
+                    if (sb.Length > 0 && sb[sb.Length - 1] == carriageReturn) // remove "\r" ,
+                        sb.Remove(sb.Length - 1, 1);
+                    return sb.ToString();
+                case endOf.row_startEndQuotes:
+                    // remove leading double quote and ending double quote and linefeed
+                    sb.Remove(sb.Length - 1, 1); // remove lineFeed or carriageReturn
+                    if (sb.Length > 0 && sb[sb.Length - 1] == doubleQuotes)
+                    {
+                        sb.Remove(0, 1); // remove leading double quote
+                        sb.Remove(sb.Length - 2, 2); // remove trialing double quote with its escape character '\'
+                        if (sb.Length > 0 && sb[sb.Length - 1] == carriageReturn)
+                            sb.Remove(sb.Length - 1, 1);
+                    }
+                    else
+                    {
+                        sb.Insert(0, '\\');
+                    }
+                    return sb.ToString();
+                case endOf.file_startEndQuotes:
+                    // remove leading double quote and ending double quote
+                    if (sb.Length > 0 && sb[sb.Length - 1] == doubleQuotes) // remove " " \r or \n
+                    {
+                        sb.Remove(0, 1); // remove leading double quote
+                        sb.Remove(sb.Length - 2, 2); // remove trialing double quote with its escape character '\'
+                    }
+                    else
+                    {
+                        sb.Insert(0, '\\');
+                    }
+                    return sb.ToString();
+                default:
+                    return sb.ToString();
+            }
+        }
     }
 
     public static class Helper
