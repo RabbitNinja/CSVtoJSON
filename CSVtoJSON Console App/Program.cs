@@ -255,7 +255,7 @@ namespace CSVtoJSON_Console_App
                 if (isEndOfFile || (int)c == comma || (int)c == lineFeed || (int)c == carriageReturn)
                 {
                     int action = 0;
-                    // case: "....", starts and ends with a double quote
+                    // case: "....", starts and ends with a double quote with an even number of double quotes inside
                     if (startsWithDoubleQuote && endsWithDoubleQuote && doubleQuoteCount % 2 == 0)
                     {
                         Regex rx1 = new Regex("^\"(.((\n|\r)|(\r\n)?)(\"*?))*?\"(,|\n|\r|(\r\n))");
@@ -263,23 +263,13 @@ namespace CSVtoJSON_Console_App
                             rx1 = new Regex("^\".*((\n|\r)|(\r\n)?).*\"");
                         var mat = rx1.Matches(strVal);
                         action = mat.Count;
-
-                        if (action == 1)
-                        {
-                            if (isEndOfFile)
-                                return endOf.file_startEndQuotes;
-                            else if ((int)c == comma)
-                                return endOf.cell_startEndQuotes;
-                            else
-                                return endOf.row_startEndQuotes;
-                        }
                     }
-                    // case: "..."...", starts and ends with a double quote
+                    // case: "..."...", starts and ends with a double quote but with an odd number of double quotes inside
                     else if (startsWithDoubleQuote && endsWithDoubleQuote && doubleQuoteCount % 2 > 0)
                     {
                         return endOf.notTheEnd;
                     }
-                    // case: "..."..., starts but does not end with a double quote
+                    // case: "..."..., starts but does not end with a double quote with an even number of double quotes inside
                     else if (startsWithDoubleQuote && !endsWithDoubleQuote && doubleQuoteCount % 2 == 0)
                     {
                         Regex rx1 = new Regex("^\"(.((\n|\r)|(\r\n)?)(\"*?))*?(,|\n|\r|(\r\n))"); // ("^\".*((\n|\r)|(\r\n)?).*\".*(,|\n|\r|(\r\n))"); // sees "Ford"Explorer, E350"1997", as two items
@@ -288,34 +278,20 @@ namespace CSVtoJSON_Console_App
                             rx1 = new Regex("^\".*((\n|\r)|(\r\n)?).*\".*");
                         var mat = rx1.Matches(strVal);
                         action = mat.Count;
-
-                        if (action == 1)
-                        {
-                            if (isEndOfFile)
-                                return endOf.file_startEndQuotes;
-                            else if ((int)c == comma)
-                                return endOf.cell_startEndQuotes;
-                            else
-                                return endOf.row_startEndQuotes;
-                        }
                     }
-                    // case: "..."..."..., starts but does not end with a double quote
+                    // case: "..."..."..., starts but does not end with a double quote but with an odd number of double quotes inside
                     else if (startsWithDoubleQuote && !endsWithDoubleQuote && doubleQuoteCount % 2 > 0)
                     {
                         return endOf.notTheEnd;
                     }
-                    // case: ..."..."..., starts but does not end with a double quote
-                    //else if (!startsWithDoubleQuote && doubleQuoteCount % 2 == 0)
-                    //{
-
-                    //}
+                    // case: ..."..."...",
                     else if (!startsWithDoubleQuote && doubleQuoteCount % 2 > 0)
                     {
                         return endOf.notTheEnd;
                     }
+                    // case: ..."...,..."...,
                     else
                     {
-                        // case: ..."...,..."...,
                         if (doubleQuoteNotAtStart)
                         {
                             Regex rx2 = new Regex("^(?!\")((.|\"|\n|\r)*)(,|\n|\r|(\r\n))");
@@ -336,12 +312,25 @@ namespace CSVtoJSON_Console_App
 
                     if (action == 1)
                     {
-                        if (isEndOfFile)
-                            return endOf.file;
-                        else if ((int)c == comma)
-                            return endOf.cell;
+                        if (startsWithDoubleQuote)
+                        {
+                            if (isEndOfFile)
+                                return endOf.file_startEndQuotes;
+                            else if ((int)c == comma)
+                                return endOf.cell_startEndQuotes;
+                            else
+                                return endOf.row_startEndQuotes;
+                        }
                         else
-                            return endOf.row;
+                        {
+                            if (isEndOfFile)
+                                return endOf.file;
+                            else if ((int)c == comma)
+                                return endOf.cell;
+                            else
+                                return endOf.row;
+                        }
+                        
                     }
                 }
 
@@ -349,45 +338,6 @@ namespace CSVtoJSON_Console_App
                     return endOf.file;
 
                 return endOf.notTheEnd;
-            }
-            catch
-            {
-                throw;
-            }
-        }
-
-        private static endOf GetAction(this char c, string strVal, int position, int nextChar, bool startsWithDoubleQuote)
-        {
-            try
-            {
-                // If there's no more character to read. it's the end of file
-                if (nextChar < 0)
-                    return endOf.file;
-
-                // when seeing "....", we know this is the end of a cell
-                if (startsWithDoubleQuote && (int)c == doubleQuotes && position > 0 && nextChar == comma)
-                    return endOf.cell;
-
-                // when seeing "...."\n we know this is the end of a row
-                else if (startsWithDoubleQuote && (int)c == doubleQuotes && position > 0 && (nextChar == lineFeed || nextChar == carriageReturn))
-                    return endOf.row;
-
-                // when seeing ...., we know this is the end of a cell
-                else if (!startsWithDoubleQuote && (int)c != doubleQuotes && nextChar == comma)
-                    return endOf.cell;
-
-                // when seeing ....\n we know this is the end of a cell
-                else if (!startsWithDoubleQuote && (int)c != doubleQuotes && (nextChar == lineFeed || nextChar == carriageReturn))
-                    return endOf.row;
-
-                else if (!startsWithDoubleQuote && (int)c == doubleQuotes && nextChar == comma)
-                    return endOf.cell;
-                // when seeing ....", or ...."\n
-                // when seeing ..."., or ...".\n
-                // when seeing "...., or "....\n
-                // we know this is NOT the end of a cell
-                else
-                    return endOf.notTheEnd;
             }
             catch
             {
@@ -536,26 +486,6 @@ namespace CSVtoJSON_Console_App
             catch
             {
                 jsonSchema.jsonObj.Clear();
-                sw.Close();
-                throw;
-            }
-        }
-
-        private static void Write(this LinkedList<string> value, StreamWriter sw)
-        {
-            try
-            {
-                LinkedListNode<string> node = value.First;
-                while (node != null)
-                {
-                    sw.Write("\"" + node.Value + "\"");
-                    node = node.Next;
-                    if (node != null)
-                        sw.Write(',');
-                }
-            }
-            catch
-            {
                 sw.Close();
                 throw;
             }

@@ -8,4 +8,8 @@
     <AssemblyName>CSVtoJSON</AssemblyName>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Folder Include="files\" />
+  </ItemGroup>
+
 </Project>
