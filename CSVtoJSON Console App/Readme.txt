@@ -12,9 +12,9 @@ Usage example:
 Example:
 
 	Enter input file name:
-	> sample0.csv
+	> sample1.csv
 	Enter output file name:
-	> sample0.json
+	> sample1.json
 	Is first row a header row?(true/false):
 	> true
 
