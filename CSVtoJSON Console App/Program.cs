@@ -198,7 +198,10 @@ namespace CSVtoJSON_Console_App
                                             if ((int)c[0] == doubleQuotes)
                                                 sb.Append('\\');
                                         }
-                                        
+
+                                        //if ((int)c[0] == lineFeed || (int)c[0] == carriageReturn)
+                                        //    sb.Append('\\');
+
                                         sb.Append(c[0]);
                                         pos++;
                                     }
@@ -415,8 +418,6 @@ namespace CSVtoJSON_Console_App
                     {
                         sb.Remove(0, 1); // remove leading double quote
                         sb.Remove(sb.Length - 2, 2); // remove trialing double quote with its escape character '\'
-                        if (sb.Length > 0 && sb[sb.Length - 1] == carriageReturn)
-                            sb.Remove(sb.Length - 1, 1);
                     }
                     else
                     {
@@ -492,19 +493,27 @@ namespace CSVtoJSON_Console_App
                         if (count2 > 0)
                             sw.Write(',');
 
-                        if (includeHeaderRow)
+                        try
                         {
-                            if (jsonSchema.keys[count2].Item2 != Program.jsonValueType.stringValue)
-                                sw.Write(string.Format("\"{0}\": {1}", kvp.Key, kvp.Value.First.Value));
+                            if (includeHeaderRow)
+                            {
+                                if (jsonSchema.keys[count2].Item2 != Program.jsonValueType.stringValue)
+                                    sw.Write(string.Format("\"{0}\": {1}", kvp.Key, kvp.Value.First.Value));
+                                else
+                                    sw.Write(string.Format("\"{0}\": \"{1}\"", kvp.Key, kvp.Value.First.Value));
+                            }
                             else
-                                sw.Write(string.Format("\"{0}\": \"{1}\"", kvp.Key, kvp.Value.First.Value));
+                            {
+                                if (jsonSchema.keys[count2].Item2 != Program.jsonValueType.stringValue)
+                                    sw.Write(string.Format("{0}", kvp.Value.First.Value));
+                                else
+                                    sw.Write(string.Format("\"{0}\"", kvp.Value.First.Value));
+                            }
                         }
-                        else
+                        catch
                         {
-                            if (jsonSchema.keys[count2].Item2 != Program.jsonValueType.stringValue)
-                                sw.Write(string.Format("{0}", kvp.Value.First.Value));
-                            else
-                                sw.Write(string.Format("\"{0}\"", kvp.Value.First.Value));
+                            Console.WriteLine("Issue with Row {0} column {1} in the CSV file.", count1.ToString(), count2.ToString());
+                            throw new Exception("Issue with Row " + count1.ToString() + " column " + count2.ToString() + " in the CSV file.");
                         }
 
                         kvp.Value.RemoveFirst();
